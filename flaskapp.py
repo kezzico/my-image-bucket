@@ -2,6 +2,8 @@ import boto3
 from flask import Flask, jsonify, render_template, request
 from dotenv import load_dotenv
 import os
+from PIL import Image
+import io
 app = Flask(__name__)
 # Load environment variables from .env file
 load_dotenv()
@@ -47,12 +49,31 @@ def list_files():
 def upload_file():
     space_name = 'kezzico-bucket'
     file = request.files['file']
+    filename = request.form.get('name', file.filename)
+
+
+    if not file.filename.lower().endswith('.jpg'):
+        try :
+            image = Image.open(file)
+            image = image.convert('RGB')
+            buffer = io.BytesIO()
+            image.save(buffer, format='JPEG')
+            buffer.seek(0)
+            file = buffer
+            file.filename = filename.rsplit('.', 1)[0] + '.jpg'
+            filename = file.filename
+
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
     try:
-        s3.upload_fileobj(file, space_name, file.filename)
+        s3.upload_fileobj(file, space_name, filename)
         s3.put_object_acl(ACL='public-read', Bucket=space_name, Key=file.filename)
-        file_url = f"https://sfo2.digitaloceanspaces.com/{space_name}/{file.filename}"
+        file_url = f"https://sfo2.digitaloceanspaces.com/{space_name}/{filename}"
         return jsonify({'url': file_url}), 200
     except Exception as e:
+        print('please fix this')
+        print(e)
         return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":

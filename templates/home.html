@@ -54,6 +54,7 @@
     <div style="text-align: center; margin-bottom: 20px;">
         <h1>Image Uploader</h1>
         <p>Upload an image and click to copy the URL</p>
+        <input type="text" id="file-name" placeholder="Enter file name" style="margin-bottom: 10px;">
         <input type="file" id="file-input" accept="image/*">
         <button id="upload-button" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Upload Image</button>
         <p id="upload-message" style="color: green; display: none;">Image uploaded successfully!</p>
@@ -67,6 +68,7 @@
             if (file) {
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('name', document.getElementById('file-name').value);
 
                 fetch('/put', {
                     method: 'POST',
