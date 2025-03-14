@@ -48,33 +48,59 @@ def list_files():
 @app.route('/put', methods=['POST'])
 def upload_file():
     space_name = 'kezzico-bucket'
+    
     file = request.files['file']
-    filename = request.form.get('name', file.filename)
+    filename = request.form.get('name')
 
+    if not filename:
+        filename = file.filename
 
-    if not file.filename.lower().endswith('.jpg'):
-        try :
-            image = Image.open(file)
+    try:
+        image = Image.open(file)
+        image_format = image.format
+
+        file_extension = os.path.splitext(filename)[1].lower()
+        print('file_extension', file_extension)
+
+        if file_extension is None or file_extension == '':
+            if image_format == 'JPEG':
+                filename = filename + '.jpg'
+            elif image_format == 'PNG':
+                filename = filename + '.jpg'
+            elif image_format == 'GIF':
+                filename = filename + '.gif'
+        
+        if image_format == "PNG" and filename.lower().endswith('jpg'):
+            print("converting png to jpg in progress")
+
             image = image.convert('RGB')
             buffer = io.BytesIO()
             image.save(buffer, format='JPEG')
             buffer.seek(0)
             file = buffer
-            file.filename = filename.rsplit('.', 1)[0] + '.jpg'
-            filename = file.filename
 
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            print('converted to jpg')
+            
+    except Exception as e:
+        print('error converting', e)
+        return jsonify({'error': str(e)}), 500
 
+    print("preparing to upload", filename)
     try:
-        s3.upload_fileobj(file, space_name, filename)
-        s3.put_object_acl(ACL='public-read', Bucket=space_name, Key=file.filename)
+        s3.upload_fileobj(
+            file, 
+            space_name, 
+            filename,
+            ExtraArgs={'ContentType': 'image/jpeg' if image_format == 'JPEG' else 'image/png'}
+        )
+        s3.put_object_acl(ACL='public-read', Bucket=space_name, Key=filename)
         file_url = f"https://sfo2.digitaloceanspaces.com/{space_name}/{filename}"
+        print('uploaded', file_url)
         return jsonify({'url': file_url}), 200
     except Exception as e:
         print('please fix this')
         print(e)
         return jsonify({'error': str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5432)
+if __name__ == '__main__':
+    app.run(debug=True)
