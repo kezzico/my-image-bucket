@@ -70,7 +70,14 @@ def upload_file():
             elif image_format == 'GIF':
                 filename = filename + '.gif'
         
-        if image_format == "PNG" and filename.lower().endswith('jpg'):
+        if image_format == "JPEG":
+            image = image.convert('RGB')
+            buffer = io.BytesIO()
+            image.save(buffer, format='JPEG')
+            buffer.seek(0)
+            file = buffer
+
+        elif image_format == "PNG" and filename.lower().endswith('jpg'):
             print("converting png to jpg in progress")
 
             image = image.convert('RGB')
@@ -90,10 +97,13 @@ def upload_file():
         s3.upload_fileobj(
             file, 
             space_name, 
-            filename,
-            ExtraArgs={'ContentType': 'image/jpeg' if image_format == 'JPEG' else 'image/png'}
+            filename
         )
-        s3.put_object_acl(ACL='public-read', Bucket=space_name, Key=filename)
+        s3.put_object_acl(
+            ACL='public-read', 
+            Bucket=space_name, 
+            Key=filename,
+            )
         file_url = f"https://sfo2.digitaloceanspaces.com/{space_name}/{filename}"
         print('uploaded', file_url)
         return jsonify({'url': file_url}), 200
